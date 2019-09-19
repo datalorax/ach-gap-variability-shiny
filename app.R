@@ -14,7 +14,6 @@ gaps <- gaps %>%
               v_econ = weighted.mean(v_econ, n, na.rm = TRUE)) %>%
     ungroup()
 
-
 map_start_loc <- gaps %>% 
     filter(city == "Oakland") %>% 
     summarize(mean_long = mean(lon, na.rm = TRUE),
@@ -28,6 +27,7 @@ pal_rev <- colorNumeric(palette = "RdBu",
                         reverse = TRUE)
 
 hisp_99 <- filter(gaps, v_hisp > -1.5, v_hisp < 0.5) %>% 
+    drop_na(v_hisp) %>% 
     mutate(gap = v_hisp,
            label = paste(
                "NCES School ID: <a href =",
@@ -36,6 +36,7 @@ hisp_99 <- filter(gaps, v_hisp > -1.5, v_hisp < 0.5) %>%
                "Estimated Gap:", round(v_hisp, 2)))
 
 econ_99 <- filter(gaps, v_econ > -1.5, v_econ < 0.5) %>% 
+    drop_na(v_econ) %>% 
     mutate(gap = v_econ,
            label = paste(
                "NCES School ID: <a href =",
@@ -43,6 +44,8 @@ econ_99 <- filter(gaps, v_econ > -1.5, v_econ < 0.5) %>%
                ncessch, "'>", ncessch, "</a>", "<br/>",
                "Estimated Gap:", round(v_econ, 2)))
 
+no_hisp <- gaps$ncessch[is.na(gaps$v_hisp)]
+no_econ <- gaps$ncessch[is.na(gaps$v_econ)]
 
 # Define UI for application that draws a histogram
 ui <- fluidPage(
@@ -112,8 +115,11 @@ server <- function(input, output) {
             setView(map_start_loc$mean_long, map_start_loc$mean_lat, zoom = 10)
     )
     observe({
-        leafletProxy("map") %>% 
-            addCircleMarkers(data = filtered_data(), 
+        d <- filtered_data()
+        
+        p <- leafletProxy("map") %>% 
+            addCircleMarkers(data = d,
+                             layerId = ~ncessch,
                              lng = ~lon,
                              lat = ~lat,
                              color = ~pal(gap),
@@ -130,6 +136,16 @@ server <- function(input, output) {
                                      'border-radius' = '2px',
                                      'border-style' = 'solid',
                                      'border-width' = '2px')))
+        if(input$data == "hisp_99") {
+            p <- p %>% 
+                removeMarker(no_hisp)
+                
+        }
+        if(input$data == "econ_99") {
+            p <- p %>% 
+                removeMarker(no_econ)
+        }
+      p
     })
 }
 
