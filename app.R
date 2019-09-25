@@ -8,11 +8,12 @@ gaps <- read_feather(here("data", "achievement-gaps-geocoded.feather"))
 
 # compute weighted mean
 gaps <- gaps %>% 
-    group_by(state, district_id, school_id, ncessch, city, cnty, nmcnty, 
-             lat, lon, content) %>% 
-    summarize(v_hisp = weighted.mean(v_hisp, n, na.rm = TRUE),
-              v_econ = weighted.mean(v_econ, n, na.rm = TRUE)) %>%
-    ungroup()
+  group_by(state, year, district_id, school_id, ncessch, city, cnty, nmcnty, 
+           lat, lon, content) %>% 
+  summarize(v_hisp = weighted.mean(v_hisp, n, na.rm = TRUE),
+            v_black = weighted.mean(v_black, n, na.rm = TRUE),
+            v_econ = weighted.mean(v_econ, n, na.rm = TRUE))  %>%
+  ungroup()
 
 map_start_loc <- gaps %>% 
     filter(city == "Oakland") %>% 
@@ -35,6 +36,15 @@ hisp_99 <- filter(gaps, v_hisp > -1.5, v_hisp < 0.5) %>%
                ncessch, "'>", ncessch, "</a>", "<br/>",
                "Estimated Gap:", round(v_hisp, 2)))
 
+black_99 <- filter(gaps, v_black > -1.5, v_black < 0.5) %>% 
+  drop_na(v_black) %>% 
+  mutate(gap = v_black,
+         label = paste(
+           "NCES School ID: <a href =",
+           "'https://nces.ed.gov/ccd/schoolsearch/school_list.asp?Search=1&InstName=&SchoolID=", 
+           ncessch, "'>", ncessch, "</a>", "<br/>",
+           "Estimated Gap:", round(v_black, 2)))
+
 econ_99 <- filter(gaps, v_econ > -1.5, v_econ < 0.5) %>% 
     drop_na(v_econ) %>% 
     mutate(gap = v_econ,
@@ -46,6 +56,7 @@ econ_99 <- filter(gaps, v_econ > -1.5, v_econ < 0.5) %>%
 
 no_hisp <- gaps$ncessch[is.na(gaps$v_hisp)]
 no_econ <- gaps$ncessch[is.na(gaps$v_econ)]
+no_black <- gaps$ncessch[is.na(gaps$v_black)]
 
 # Define UI for application that draws a histogram
 ui <- fluidPage(
@@ -88,9 +99,17 @@ ui <- fluidPage(
                                width = ),
                   radioButtons("data",
                                "Select Achievement Gap",
-                               c("Hispanic/White" = "hisp_99",
+                               c("Hispanic-White" = "hisp_99",
+                                 "Black-White" = "black_99",
                                  "Economically Disadvantage/All Students" = "econ_99"),
-                               selected = "hisp_99")
+                               selected = "hisp_99"),
+                  radioButtons("year",
+                               "Select Academic Year",
+                               c("2014-15" = "1415",
+                                 "2015-16" = "1516",
+                                 "2016-17" = "1617",
+                                 "2017-18" = "1718"),
+                               inline = TRUE)
           )
     )
 )
@@ -99,7 +118,8 @@ server <- function(input, output) {
     
     filtered_data <- reactive({
         filter(get(input$data), 
-               content == input$content)
+               content == input$content,
+               year == input$year)
     })
         
     output$map <- renderLeaflet(
@@ -140,6 +160,11 @@ server <- function(input, output) {
             p <- p %>% 
                 removeMarker(no_hisp)
                 
+        }
+        if(input$data == "black_99") {
+          p <- p %>% 
+            removeMarker(no_black)
+          
         }
         if(input$data == "econ_99") {
             p <- p %>% 

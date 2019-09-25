@@ -1,0 +1,12 @@
+name: ach-gap-variability-shiny
+title: ach-gap-variability-shiny
+username:
+account: anono-for-peer-review
+server: shinyapps.io
+hostUrl: https://api.shinyapps.io/v1
+appId: 1220001
+bundleId: 2445424
+url: https://anono-for-peer-review.shinyapps.io/ach-gap-variability-shiny/
+when: 1569447235.573
+asMultiple: FALSE
+asStatic: FALSE
